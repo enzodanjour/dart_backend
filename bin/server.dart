@@ -1,13 +1,35 @@
 import 'package:shelf/shelf.dart';
-import 'package:shelf/shelf_io.dart' as shelf_io;
 
-import 'servidor_handler.dart';
+import 'api/blog_api.dart';
+import 'api/login_api.dart';
+import 'infra/custom_server.dart';
+import 'utils/custom_env.dart';
+import 'utils/state_server.dart';
 
 void main() async {
-  var sh = ServidorHandler();
-  final server = await shelf_io.serve(
-    sh.handler,
-    'localhost',
-    3000,
+  CustomEnv.fromFile('.env-dev');
+  
+
+  var cascadeHandler = Cascade()
+      .add(
+        LoginApi().handler,
+      )
+      .add(
+        BlogApi().handler,
+      )
+      .handler;
+
+  var handler = Pipeline()
+      .addMiddleware(
+        logRequests(),
+      )
+      .addHandler(
+        cascadeHandler,
+      );
+
+  await CustomServer().initialize(
+    address: await CustomEnv.get<String>(key: 'server_address'),
+    port: await CustomEnv.get<int>(key: 'server_port'),
+    handler: handler,
   );
 }
